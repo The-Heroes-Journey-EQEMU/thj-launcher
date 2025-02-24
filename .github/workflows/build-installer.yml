@@ -1,7 +1,12 @@
 name: Build and Package THJInstaller
 
 on:
-  workflow_dispatch: #
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+  workflow_dispatch:
 
 jobs:
   build:

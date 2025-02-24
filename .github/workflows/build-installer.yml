@@ -45,9 +45,18 @@ jobs:
       - name: Build the Installer
         run: dotnet publish -c Release -o output /p:EnableWindowsTargeting=true
 
+      - name: List output directory contents
+        run: |
+          Get-ChildItem -Path output\* -Recurse
+        shell: pwsh
+
       - name: Create ZIP
         run: |
-          Compress-Archive -Path output\* -DestinationPath THJInstaller-${{ env.VERSION }}.zip
+          if (Test-Path output\*) {
+            Compress-Archive -Path output\* -DestinationPath THJInstaller-${{ env.VERSION }}.zip
+          } else {
+            Write-Error "No files found in output directory!"
+          }
         shell: pwsh
 
       - name: Upload ZIP as an artifact

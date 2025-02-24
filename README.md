@@ -1,5 +1,8 @@
 # The Heroes Journey Installer
 
+#Download Here
+[Download THJ Installer v1.0.5](https://github.com/The-Heroes-Journey-EQEMU/thj-launcher/releases/download/v1.0.5/THJInstaller-1.0.5.zip)
+
 ## Requirements
 
 - Windows 10 or later

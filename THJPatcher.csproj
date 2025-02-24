@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+<PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Platforms>x64</Platforms>
+
+    <!-- Framework-dependent settings -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+    
+    <!-- Optimization settings -->
+    <Optimize>true</Optimize>
+    <TieredCompilation>true</TieredCompilation>
+
+    <!-- App metadata -->
+    <AssemblyName>THJInstaller</AssemblyName>
+    <Product>THJInstaller</Product>
+    <Version>1.0.5</Version>
+</PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MaterialDesignThemes" Version="5.2.1" />
+    <PackageReference Include="Steamworks.NET" Version="20.1.0" />
+    <PackageReference Include="YamlDotNet" Version="13.7.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Images\*.png" />
+    <Resource Include="Images\app.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="steam_appid.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

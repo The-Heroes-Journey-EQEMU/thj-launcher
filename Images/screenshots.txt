@@ -1,0 +1,43 @@
+Required Screenshots for Installation Wizard:
+
+1. steam-console.png
+- Shows the Steam console window (black window)
+- Should capture the moment it first opens
+- Resolution: 1280x720 recommended
+- Key elements to show:
+  * Empty console prompt
+  * Steam console title bar
+  * Where user will type/paste
+
+2. paste-command.png
+- Shows the command pasted in the console
+- Command will be: download_depot 205710 205711 1926608638440811669
+- Resolution: 1280x720 recommended
+- Key elements to show:
+  * Command text clearly visible
+  * Cursor position after paste
+  * Full command visible in one line
+
+3. press-enter.png
+- Shows the moment after pressing Enter
+- Resolution: 1280x720 recommended
+- Key elements to show:
+  * Command executed
+  * Initial download message
+  * Any Steam response text
+
+4. download-progress.png
+- Shows Steam's download interface
+- Resolution: 1280x720 recommended
+- Key elements to show:
+  * Download progress bar
+  * Download speed
+  * File size information
+  * Estimated time remaining
+
+Notes:
+- All screenshots should be PNG format
+- Dark theme preferred for consistency
+- Keep file sizes reasonable (under 1MB each)
+- Highlight important areas if possible
+- Consider adding numbered arrows or highlights to guide users 

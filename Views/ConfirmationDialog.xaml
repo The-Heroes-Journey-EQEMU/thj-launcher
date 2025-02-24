@@ -1,0 +1,47 @@
+<Window x:Class="THJPatcher.Views.ConfirmationDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Confirm" 
+        Height="250" 
+        Width="500"
+        WindowStyle="None"
+        WindowStartupLocation="CenterScreen"
+        AllowsTransparency="True"
+        Background="Transparent">
+    
+    <Border Background="#FF202020"
+            CornerRadius="10"
+            BorderBrush="#D4AF37"
+            BorderThickness="1">
+        <StackPanel VerticalAlignment="Center"
+                    Margin="20">
+            <TextBlock TextWrapping="Wrap"
+                      TextAlignment="Center"
+                      Margin="0,0,0,20"
+                      Foreground="#D4AF37"
+                      FontSize="16">
+                If you need extra storage space, you can remove the Steam depot now that the install is complete. However, it's recommended you keep this incase you need to repair your install.
+            </TextBlock>
+            
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center">
+                <Button Content="Keep"
+                        Width="120"
+                        Height="30"
+                        Background="#FF202020"
+                        Foreground="#D4AF37"
+                        BorderBrush="#D4AF37"
+                        Margin="0,0,10,0"
+                        Click="NoButton_Click"/>
+                <Button Content="Remove"
+                        Width="120"
+                        Height="30"
+                        Background="#FF202020"
+                        Foreground="#D4AF37"
+                        BorderBrush="#D4AF37"
+                        Margin="10,0,0,0"
+                        Click="YesButton_Click"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window> 

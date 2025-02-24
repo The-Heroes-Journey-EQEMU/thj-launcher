@@ -1,0 +1,30 @@
+<Window x:Class="THJPatcher.Views.SplashScreen"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Loading" 
+        Height="200" 
+        Width="400"
+        WindowStyle="None"
+        WindowStartupLocation="CenterScreen"
+        AllowsTransparency="True"
+        Background="Transparent">
+    
+    <Border Background="#FF202020"
+            CornerRadius="10"
+            BorderBrush="#D4AF37"
+            BorderThickness="1">
+        <StackPanel VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+            <TextBlock Text="Loading THJ Installer..."
+                       Foreground="#D4AF37"
+                       FontSize="20"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,20"/>
+            <ProgressBar IsIndeterminate="True"
+                         Width="200"
+                         Height="2"
+                         Background="Transparent"
+                         Foreground="#D4AF37"/>
+        </StackPanel>
+    </Border>
+</Window> 

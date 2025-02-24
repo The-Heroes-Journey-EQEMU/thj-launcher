@@ -19,6 +19,15 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Extract Version from .csproj
+        id: get_version
+        shell: pwsh
+        run: |
+          [xml]$csproj = Get-Content THJInstaller.csproj
+          $version = $csproj.Project.PropertyGroup.Version
+          echo "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "Extracted Version: $version"
+
       - name: Restore dependencies
         run: dotnet restore
 
@@ -27,14 +36,14 @@ jobs:
 
       - name: Create ZIP
         run: |
-          Compress-Archive -Path output\* -DestinationPath THJInstaller.zip
+          Compress-Archive -Path output\* -DestinationPath THJInstaller-${{ env.VERSION }}.zip
         shell: pwsh
 
       - name: Upload ZIP as an artifact
         uses: actions/upload-artifact@v4
         with:
           name: THJInstaller-ZIP
-          path: THJInstaller.zip
+          path: THJInstaller-${{ env.VERSION }}.zip
 
   release:
     needs: build
@@ -50,7 +59,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          files: output/THJInstaller.zip
+          tag_name: v${{ env.VERSION }}
+          files: output/THJInstaller-${{ env.VERSION }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

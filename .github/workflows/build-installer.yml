@@ -31,7 +31,7 @@ jobs:
           zip -r ../THJInstaller.zip .
 
       - name: Upload ZIP as an artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: THJInstaller-ZIP
           path: THJInstaller.zip

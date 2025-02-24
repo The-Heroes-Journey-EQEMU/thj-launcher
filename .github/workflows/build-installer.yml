@@ -36,14 +36,16 @@ jobs:
         run: |
           [xml]$csproj = Get-Content $env:CSPROJ_PATH
           $version = $csproj.Project.PropertyGroup.Version
+          if (-not $version) { $version = "1.0.0" }
           echo "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
           echo "Extracted Version: $version"
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore ${{ env.CSPROJ_PATH }}
 
       - name: Build the Installer
-        run: dotnet publish -c Release -o output /p:EnableWindowsTargeting=true
+        run: |
+          dotnet publish ${{ env.CSPROJ_PATH }} -c Release -r win-x64 --self-contained false -o output
 
       - name: List output directory contents
         run: |
@@ -52,34 +54,17 @@ jobs:
 
       - name: Create ZIP
         run: |
-          if (Test-Path output\*) {
-            Compress-Archive -Path output\* -DestinationPath THJInstaller-${{ env.VERSION }}.zip
-          } else {
-            Write-Error "No files found in output directory!"
-          }
+          Compress-Archive -Path output\* -DestinationPath "THJInstaller-${{ env.VERSION }}.zip" -Force
         shell: pwsh
 
-      - name: Upload ZIP as an artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: THJInstaller-ZIP
-          path: THJInstaller-${{ env.VERSION }}.zip
-
-  release:
-    needs: build
-    runs-on: windows-latest
-
-    steps:
-      - name: Download ZIP artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: THJInstaller-ZIP
-          path: output/
-
-      - name: Create GitHub Release
+      - name: Create Release
+        id: create_release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ env.VERSION }}
-          files: output/THJInstaller-${{ env.VERSION }}.zip
+          name: Release v${{ env.VERSION }}
+          files: THJInstaller-${{ env.VERSION }}.zip
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

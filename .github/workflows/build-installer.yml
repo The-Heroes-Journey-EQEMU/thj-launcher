@@ -20,8 +20,8 @@ jobs:
         id: find_csproj
         shell: pwsh
         run: |
-          $csprojPath = Get-ChildItem -Path . -Recurse -Filter "THJInstaller.csproj" | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $csprojPath) { throw "THJInstaller.csproj not found!" }
+          $csprojPath = Get-ChildItem -Path . -Recurse -Filter "THJPatcher.csproj" | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $csprojPath) { throw "THJPatcher.csproj not found!" }
           echo "CSPROJ_PATH=$csprojPath" | Out-File -FilePath $env:GITHUB_ENV -Append
           echo "Found .csproj at: $csprojPath"
 

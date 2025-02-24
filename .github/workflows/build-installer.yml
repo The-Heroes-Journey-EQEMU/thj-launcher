@@ -1,0 +1,56 @@
+name: Build and Package THJInstaller
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build the Installer
+        run: dotnet publish -c Release -o output
+
+      - name: Create ZIP
+        run: |
+          cd output
+          zip -r ../THJInstaller.zip .
+
+      - name: Upload ZIP as an artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: THJInstaller-ZIP
+          path: THJInstaller.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download ZIP artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: THJInstaller-ZIP
+          path: output/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          files: output/THJInstaller.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

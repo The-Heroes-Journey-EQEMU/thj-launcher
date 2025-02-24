@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - name: Checkout repository
@@ -23,12 +23,12 @@ jobs:
         run: dotnet restore
 
       - name: Build the Installer
-        run: dotnet publish -c Release -o output
+        run: dotnet publish -c Release -o output /p:EnableWindowsTargeting=true
 
       - name: Create ZIP
         run: |
-          cd output
-          zip -r ../THJInstaller.zip .
+          Compress-Archive -Path output\* -DestinationPath THJInstaller.zip
+        shell: pwsh
 
       - name: Upload ZIP as an artifact
         uses: actions/upload-artifact@v4
@@ -38,11 +38,11 @@ jobs:
 
   release:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - name: Download ZIP artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: THJInstaller-ZIP
           path: output/

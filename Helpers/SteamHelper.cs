@@ -210,6 +210,10 @@ namespace THJPatcher.Helpers
                     // Prepare the command
                     string command = $"download_depot {GAME_APP_ID} {GAME_DEPOT_ID} {GAME_MANIFEST_ID}";
                     
+                    // Detect system language
+                    var currentCulture = System.Globalization.CultureInfo.CurrentUICulture;
+                    bool isFrench = currentCulture.Name.StartsWith("fr", StringComparison.OrdinalIgnoreCase);
+                    
                     // Copy command to clipboard with retry mechanism
                     bool clipboardSuccess = false;
                     for (int retryCount = 0; retryCount < 3 && !clipboardSuccess; retryCount++)
@@ -221,27 +225,57 @@ namespace THJPatcher.Helpers
                         }
                         catch (Exception clipboardEx)
                         {
+                            // Check for the specific French clipboard error
+                            if (clipboardEx.Message.Contains("Échec de OpenClipboard") || 
+                                clipboardEx.Message.Contains("CLIPBRD_E_CANT_OPEN"))
+                            {
+                                // If we detect French error, show French message
+                                updateStatusCallback("=== COPIE MANUELLE REQUISE ===");
+                                updateStatusCallback("Impossible de copier dans le presse-papiers. Veuillez copier cette commande manuellement :");
+                                updateStatusCallback(command);
+                                updateStatusCallback("===============================");
+                                break; // Exit retry loop since we've handled the French error
+                            }
                             await Task.Delay(100);  // Wait before retry
                         }
                     }
 
                     if (!clipboardSuccess)
                     {
-                        updateStatusCallback("=== IMPORTANT: MANUAL COPY REQUIRED ===");
-                        updateStatusCallback("Could not copy to clipboard. Please manually copy this command:");
-                        updateStatusCallback(command);
-                        updateStatusCallback("===============================");
+                        // Only show English message if we haven't already shown French message
+                        if (!clipboardEx.Message.Contains("Échec de OpenClipboard") && 
+                            !clipboardEx.Message.Contains("CLIPBRD_E_CANT_OPEN"))
+                        {
+                            updateStatusCallback("=== MANUAL COPY REQUIRED ===");
+                            updateStatusCallback("Could not copy to clipboard. Please copy this command manually:");
+                            updateStatusCallback(command);
+                            updateStatusCallback("===============================");
+                        }
                     }
                     else
                     {
-                        updateStatusCallback("=== INSTALLATION STEPS ===");
-                        updateStatusCallback("1. Steam console will open automatically");
-                        updateStatusCallback("2. The download command has been copied to your clipboard");
-                        updateStatusCallback("3. Click in the Steam console and press Ctrl+V to paste the command");
-                        updateStatusCallback("4. Press Enter to start the download");
-                        updateStatusCallback("5. Please wait while the download completes...");
-                        updateStatusCallback("6. The installer will monitor and prompt you for install once its done.");
-                        updateStatusCallback("========================");
+                        if (isFrench)
+                        {
+                            updateStatusCallback("=== ÉTAPES D'INSTALLATION ===");
+                            updateStatusCallback("1. La console Steam s'ouvrira automatiquement");
+                            updateStatusCallback("2. La commande de téléchargement a été copiée dans votre presse-papiers");
+                            updateStatusCallback("3. Cliquez dans la console Steam et appuyez sur Ctrl+V pour coller la commande");
+                            updateStatusCallback("4. Appuyez sur Entrée pour démarrer le téléchargement");
+                            updateStatusCallback("5. Veuillez patienter pendant le téléchargement...");
+                            updateStatusCallback("6. L'installateur vous informera une fois le processus terminé.");
+                            updateStatusCallback("========================");
+                        }
+                        else
+                        {
+                            updateStatusCallback("=== INSTALLATION STEPS ===");
+                            updateStatusCallback("1. Steam console will open automatically");
+                            updateStatusCallback("2. The download command has been copied to your clipboard");
+                            updateStatusCallback("3. Click in the Steam console and press Ctrl+V to paste the command");
+                            updateStatusCallback("4. Press Enter to start the download");
+                            updateStatusCallback("5. Please wait while the download completes...");
+                            updateStatusCallback("6. The installer will monitor and prompt you for install once its done.");
+                            updateStatusCallback("========================");
+                        }
                     }
 
                     // Open Steam console

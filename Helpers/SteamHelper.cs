@@ -327,23 +327,17 @@ namespace THJPatcher.Helpers
                                 noChangeCount++;
                                 var timeWithoutChange = DateTime.Now - lastChangeTime;
                                 
-                                // Check for pause dynamically
-                                if (downloadedGB < (TOTAL_GB * 0.95))
+                                // Only show pause message if no change for 30 seconds (6 iterations)
+                                if (noChangeCount >= 6 && downloadedGB < (TOTAL_GB * 0.95))
                                 {
                                     updateStatusCallback("Download paused, reconnecting...");
                                 }
-                                else
-                                {
-                                    updateStatusCallback($"Checking download completion... ({60 - timeWithoutChange.Seconds} seconds remaining)");
-                                }
-
-                                // Check for file download completion
-                                if (noChangeCount >= 12)
+                                else if (noChangeCount >= 12)
                                 {
                                     updateStatusCallback("Download complete!");
                                     updateStatusCallback("Transferring files...");
                                     
-                                    await Task.Run(() => CopyDirectory(expectedPath, installPath));
+                                    await Task.Run(() => CopyDirectoryWithRetry(expectedPath, installPath, updateStatusCallback));
                                     updateStatusCallback("File transfer complete!");
 
                                     // Verify and copy required DLL files
@@ -466,7 +460,7 @@ namespace THJPatcher.Helpers
             return size;
         }
 
-        private static void CopyDirectory(string sourceDir, string destinationDir)
+        private static async Task CopyDirectoryWithRetry(string sourceDir, string destinationDir, Action<string> updateStatusCallback)
         {
             // Create all of the directories
             foreach (string dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
@@ -477,7 +471,47 @@ namespace THJPatcher.Helpers
             // Copy all the files & replaces any files with the same name
             foreach (string newPath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
             {
-                File.Copy(newPath, newPath.Replace(sourceDir, destinationDir), true);
+                string destPath = newPath.Replace(sourceDir, destinationDir);
+                bool success = false;
+                int retryCount = 0;
+                const int maxRetries = 3;
+
+                while (!success && retryCount < maxRetries)
+                {
+                    try
+                    {
+                        // If file exists, try to delete it first
+                        if (File.Exists(destPath))
+                        {
+                            File.Delete(destPath);
+                        }
+
+                        // Wait a short time to ensure file is released
+                        await Task.Delay(1000);
+
+                        // Copy the file
+                        using (var sourceStream = new FileStream(newPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                        using (var destStream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                        {
+                            await sourceStream.CopyToAsync(destStream);
+                        }
+                        success = true;
+                    }
+                    catch (IOException ex)
+                    {
+                        retryCount++;
+                        if (retryCount < maxRetries)
+                        {
+                            updateStatusCallback($"File {Path.GetFileName(newPath)} is in use, retrying... ({retryCount}/{maxRetries})");
+                            await Task.Delay(2000); // Wait 2 seconds before retry
+                        }
+                        else
+                        {
+                            updateStatusCallback($"Warning: Could not copy {Path.GetFileName(newPath)} after {maxRetries} attempts. Please close any programs that might be using this file.");
+                            throw;
+                        }
+                    }
+                }
             }
         }
 

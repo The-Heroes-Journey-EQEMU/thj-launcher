@@ -216,6 +216,7 @@ namespace THJPatcher.Helpers
                     
                     // Copy command to clipboard with retry mechanism
                     bool clipboardSuccess = false;
+                    string lastClipboardError = null;
                     for (int retryCount = 0; retryCount < 3 && !clipboardSuccess; retryCount++)
                     {
                         try
@@ -225,6 +226,7 @@ namespace THJPatcher.Helpers
                         }
                         catch (Exception clipboardEx)
                         {
+                            lastClipboardError = clipboardEx.Message;
                             // Check for the specific French clipboard error
                             if (clipboardEx.Message.Contains("Échec de OpenClipboard") || 
                                 clipboardEx.Message.Contains("CLIPBRD_E_CANT_OPEN"))
@@ -243,8 +245,9 @@ namespace THJPatcher.Helpers
                     if (!clipboardSuccess)
                     {
                         // Only show English message if we haven't already shown French message
-                        if (!clipboardEx.Message.Contains("Échec de OpenClipboard") && 
-                            !clipboardEx.Message.Contains("CLIPBRD_E_CANT_OPEN"))
+                        if (lastClipboardError != null && 
+                            !lastClipboardError.Contains("Échec de OpenClipboard") && 
+                            !lastClipboardError.Contains("CLIPBRD_E_CANT_OPEN"))
                         {
                             updateStatusCallback("=== MANUAL COPY REQUIRED ===");
                             updateStatusCallback("Could not copy to clipboard. Please copy this command manually:");

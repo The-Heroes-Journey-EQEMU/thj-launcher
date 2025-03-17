@@ -40,8 +40,4 @@
     </None>
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="Helpers\FileVerificationHelper.cs" />
-  </ItemGroup>
-
 </Project>

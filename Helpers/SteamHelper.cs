@@ -210,16 +210,39 @@ namespace THJPatcher.Helpers
                     // Prepare the command
                     string command = $"download_depot {GAME_APP_ID} {GAME_DEPOT_ID} {GAME_MANIFEST_ID}";
                     
-                    // Copy command to clipboard and provide clear instructions
-                    setClipboardText(command);
-                    updateStatusCallback("=== INSTALLATION STEPS ===");
-                    updateStatusCallback("1. Steam console will open automatically");
-                    updateStatusCallback("2. The download command has been copied to your clipboard");
-                    updateStatusCallback("3. Click in the Steam console and press Ctrl+V to paste the command");
-                    updateStatusCallback("4. Press Enter to start the download");
-                    updateStatusCallback("5. Please wait while the download completes...");
-                    updateStatusCallback("6. The installer will monitor and prompt you for install once its done.");
-                    updateStatusCallback("========================");
+                    // Copy command to clipboard with retry mechanism
+                    bool clipboardSuccess = false;
+                    for (int retryCount = 0; retryCount < 3 && !clipboardSuccess; retryCount++)
+                    {
+                        try
+                        {
+                            setClipboardText(command);
+                            clipboardSuccess = true;
+                        }
+                        catch (Exception clipboardEx)
+                        {
+                            await Task.Delay(100);  // Wait before retry
+                        }
+                    }
+
+                    if (!clipboardSuccess)
+                    {
+                        updateStatusCallback("=== IMPORTANT: MANUAL COPY REQUIRED ===");
+                        updateStatusCallback("Could not copy to clipboard. Please manually copy this command:");
+                        updateStatusCallback(command);
+                        updateStatusCallback("===============================");
+                    }
+                    else
+                    {
+                        updateStatusCallback("=== INSTALLATION STEPS ===");
+                        updateStatusCallback("1. Steam console will open automatically");
+                        updateStatusCallback("2. The download command has been copied to your clipboard");
+                        updateStatusCallback("3. Click in the Steam console and press Ctrl+V to paste the command");
+                        updateStatusCallback("4. Press Enter to start the download");
+                        updateStatusCallback("5. Please wait while the download completes...");
+                        updateStatusCallback("6. The installer will monitor and prompt you for install once its done.");
+                        updateStatusCallback("========================");
+                    }
 
                     // Open Steam console
                     updateStatusCallback("Opening Steam console...");
@@ -285,6 +308,9 @@ namespace THJPatcher.Helpers
                                     
                                     await Task.Run(() => CopyDirectory(expectedPath, installPath));
                                     updateStatusCallback("File transfer complete!");
+
+                                    // Verify and copy required DLL files
+                                    FileVerificationHelper.VerifyAndCopyRequiredFiles(expectedPath, installPath, updateStatusCallback);
 
                                     // Download and install the patcher
                                     updateStatusCallback("Installing the Heroes Journey Patcher...");

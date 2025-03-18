@@ -12,6 +12,7 @@ using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Media;
 using THJPatcher.Views;
+using System.Security.Principal;
 
 namespace THJPatcher.Helpers
 {
@@ -30,8 +31,22 @@ namespace THJPatcher.Helpers
         // Static HttpClient
         private static readonly HttpClient httpClient = new HttpClient();
 
+        public static bool IsAdministrator()
+        {
+            var identity = WindowsIdentity.GetCurrent();
+            var principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+
         public static async Task InstallGame(Action<string> setClipboardText, Action<string> updateStatusCallback)
         {
+            if (!IsAdministrator())
+            {
+                updateStatusCallback("Administrator privileges are required for installation.");
+                updateStatusCallback("Please run the installer as Administrator.");
+                throw new UnauthorizedAccessException("Administrator privileges required.");
+            }
+
             try
             {
                 // Get all available drives
@@ -462,57 +477,89 @@ namespace THJPatcher.Helpers
 
         private static async Task CopyDirectoryWithRetry(string sourceDir, string destinationDir, Action<string> updateStatusCallback)
         {
-            // Create all of the directories
+            // Create all of the directories with retry
             foreach (string dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
             {
-                Directory.CreateDirectory(dirPath.Replace(sourceDir, destinationDir));
+                string targetDir = dirPath.Replace(sourceDir, destinationDir);
+                await RetryOperation(() => Directory.CreateDirectory(targetDir), 
+                    $"Creating directory: {Path.GetFileName(targetDir)}", updateStatusCallback);
             }
 
-            // Copy all the files & replaces any files with the same name
-            foreach (string newPath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
+            // Copy all the files with retry
+            foreach (string sourcePath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
             {
-                string destPath = newPath.Replace(sourceDir, destinationDir);
-                bool success = false;
-                int retryCount = 0;
-                const int maxRetries = 3;
-
-                while (!success && retryCount < maxRetries)
+                string destPath = sourcePath.Replace(sourceDir, destinationDir);
+                string fileName = Path.GetFileName(sourcePath);
+                
+                await RetryOperation(async () =>
                 {
-                    try
+                    // Try to release any existing handles
+                    if (File.Exists(destPath))
                     {
-                        // If file exists, try to delete it first
-                        if (File.Exists(destPath))
+                        try
                         {
+                            using (var fs = new FileStream(destPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                            {
+                                // If we can open it exclusively, we can close it and delete it
+                                fs.Close();
+                            }
                             File.Delete(destPath);
                         }
-
-                        // Wait a short time to ensure file is released
-                        await Task.Delay(1000);
-
-                        // Copy the file
-                        using (var sourceStream = new FileStream(newPath, FileMode.Open, FileAccess.Read, FileShare.Read))
-                        using (var destStream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                        catch (IOException)
                         {
-                            await sourceStream.CopyToAsync(destStream);
+                            // If we can't open it exclusively, try to force close any handles
+                            GC.Collect();
+                            GC.WaitForPendingFinalizers();
+                            File.Delete(destPath);
                         }
-                        success = true;
                     }
-                    catch (IOException ex)
+
+                    // Wait a moment after deleting
+                    await Task.Delay(100);
+
+                    // Try to copy with more permissive sharing mode
+                    using (var sourceStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    using (var destStream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.Read))
                     {
-                        retryCount++;
-                        if (retryCount < maxRetries)
-                        {
-                            updateStatusCallback($"File {Path.GetFileName(newPath)} is in use, retrying... ({retryCount}/{maxRetries})");
-                            await Task.Delay(2000); // Wait 2 seconds before retry
-                        }
-                        else
-                        {
-                            updateStatusCallback($"Warning: Could not copy {Path.GetFileName(newPath)} after {maxRetries} attempts. Please close any programs that might be using this file.");
-                            throw;
-                        }
+                        await sourceStream.CopyToAsync(destStream);
                     }
+                }, 
+                $"Copying: {fileName}", 
+                updateStatusCallback,
+                maxRetries: 5,
+                retryDelay: 2000);
+            }
+        }
+
+        private static async Task RetryOperation(Func<Task> operation, string operationName, Action<string> updateStatusCallback, 
+            int maxRetries = 3, int retryDelay = 1000)
+        {
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                try
+                {
+                    await operation();
+                    return;
+                }
+                catch (IOException ex) when (attempt < maxRetries)
+                {
+                    updateStatusCallback($"Retry {attempt}/{maxRetries} - {operationName}: {ex.Message}");
+                    
+                    // On retry, try to free up resources
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    
+                    await Task.Delay(retryDelay * attempt); // Exponential backoff
+                }
+                catch (Exception ex) when (attempt < maxRetries)
+                {
+                    updateStatusCallback($"Unexpected error during {operationName}: {ex.Message}");
+                    await Task.Delay(retryDelay * attempt);
                 }
             }
+            
+            // If we get here, all retries failed
+            throw new IOException($"Failed to complete operation after {maxRetries} attempts: {operationName}");
         }
 
         public static async Task DeleteSteamDepot()

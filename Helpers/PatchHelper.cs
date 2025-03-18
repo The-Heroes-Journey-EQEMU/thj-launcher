@@ -225,8 +225,20 @@ namespace THJPatcher.Helpers
 
         private static async Task<string> CalculateFileMd5(string filePath)
         {
-            string content = await File.ReadAllTextAsync(filePath);
-            return GenerateMd5ForContent(content);
+            try
+            {
+                using (var md5 = System.Security.Cryptography.MD5.Create())
+                using (var stream = File.OpenRead(filePath))
+                {
+                    byte[] hashBytes = md5.ComputeHash(stream);
+                    return BitConverter.ToString(hashBytes).Replace("-", "");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error calculating MD5 for {filePath}: {ex.Message}");
+                return null;
+            }
         }
 
         public static async Task DownloadAndApplyUpdates(Action<string> updateStatusCallback)
@@ -238,33 +250,77 @@ namespace THJPatcher.Helpers
                 // Handle deletes first
                 if (fileList.Deletes != null)
                 {
+                    updateStatusCallback($"Processing {fileList.Deletes.Count} file deletion(s)...");
                     foreach (var deleteEntry in fileList.Deletes)
                     {
                         string localPath = Path.Combine(AppDataPath, deleteEntry.Name);
                         if (File.Exists(localPath))
                         {
-                            updateStatusCallback($"Removing file: {deleteEntry.Name}");
-                            File.Delete(localPath);
+                            try
+                            {
+                                File.Delete(localPath);
+                                updateStatusCallback($"Removed: {deleteEntry.Name}");
+                            }
+                            catch (Exception ex)
+                            {
+                                updateStatusCallback($"Warning: Could not delete {deleteEntry.Name}: {ex.Message}");
+                            }
                         }
                     }
                 }
 
-                // Handle downloads
-                foreach (var fileEntry in fileList.Downloads)
+                // Then handle updates
+                if (fileList.Downloads != null)
                 {
-                    string localPath = Path.Combine(AppDataPath, fileEntry.Name);
-                    string remoteUrl = fileList.DownloadPrefix + fileEntry.Name;
-
-                    // Check if file needs updating
-                    if (!File.Exists(localPath) || await CalculateFileMd5(localPath) != fileEntry.Md5)
+                    foreach (var fileEntry in fileList.Downloads)
                     {
-                        await DownloadAndUpdateFile(localPath, remoteUrl, updateStatusCallback);
+                        string localPath = Path.Combine(AppDataPath, fileEntry.Name);
+                        string remoteUrl = fileList.DownloadPrefix + fileEntry.Name;
+                        
+                        // Normalize paths for comparison
+                        string normalizedLocalPath = localPath.Replace('\\', '/');
+                        string normalizedRemotePath = fileEntry.Name.Replace('\\', '/');
+                        
+                        if (!File.Exists(localPath))
+                        {
+                            updateStatusCallback($"Missing file: {normalizedRemotePath}");
+                            await DownloadAndUpdateFile(localPath, remoteUrl, updateStatusCallback);
+                            continue;
+                        }
+
+                        string localMd5 = await CalculateFileMd5(localPath);
+                        if (localMd5 == null)
+                        {
+                            updateStatusCallback($"Warning: Could not calculate MD5 for {normalizedRemotePath}, skipping...");
+                            continue;
+                        }
+
+                        if (localMd5 != fileEntry.Md5)
+                        {
+                            updateStatusCallback($"Modified file detected: {normalizedRemotePath}");
+                            updateStatusCallback($"Expected MD5: {fileEntry.Md5}, Got: {localMd5}");
+                            await DownloadAndUpdateFile(localPath, remoteUrl, updateStatusCallback);
+                        }
                     }
                 }
+
+                // Update the local filelist
+                if (fileList != null)
+                {
+                    var serializer = new SerializerBuilder()
+                        .WithNamingConvention(CamelCaseNamingConvention.Instance)
+                        .Build();
+                    string yamlContent = serializer.Serialize(fileList);
+                    await File.WriteAllTextAsync(localFilePath, yamlContent);
+                    CurrentVersion = fileList.Version;
+                }
+
+                updateStatusCallback($"Up to date with patch {fileList?.Version ?? "unknown"}.");
+                updateStatusCallback("Patch complete! Ready to play!");
             }
             catch (Exception ex)
             {
-                updateStatusCallback($"Error during update: {ex.Message}");
+                updateStatusCallback($"Error during patching: {ex.Message}");
                 throw;
             }
         }

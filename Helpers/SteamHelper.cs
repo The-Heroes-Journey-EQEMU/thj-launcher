@@ -481,8 +481,13 @@ namespace THJPatcher.Helpers
             foreach (string dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
             {
                 string targetDir = dirPath.Replace(sourceDir, destinationDir);
-                await RetryOperation(() => Directory.CreateDirectory(targetDir), 
-                    $"Creating directory: {Path.GetFileName(targetDir)}", updateStatusCallback);
+                await RetryOperation(async () => 
+                {
+                    Directory.CreateDirectory(targetDir);
+                    await Task.CompletedTask; // Convert sync operation to async
+                }, 
+                $"Creating directory: {Path.GetFileName(targetDir)}", 
+                updateStatusCallback);
             }
 
             // Copy all the files with retry

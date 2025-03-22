@@ -21,8 +21,8 @@ namespace THJPatcher.Helpers
         private const string GAME_APP_ID = "205710";
         private const string GAME_DEPOT_ID = "205711";
         private const string GAME_MANIFEST_ID = "1926608638440811669";
-        private const double TOTAL_SIZE_MB = 8910.0;
-        private const double EXPECTED_DOWNLOAD_SIZE_MB = 8910.0;
+        private const double TOTAL_GB = 8.91;
+        private const double EXPECTED_DOWNLOAD_SIZE_B = 9410506056.0;
 
         // Shortcut creation
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
@@ -296,21 +296,30 @@ namespace THJPatcher.Helpers
                         }
                     }
 
+                    double currentSize = await Task.Run(() => CalculateDirectorySize(expectedPath));
                     // Open Steam console
-                    updateStatusCallback("Opening Steam console...");
-                    Process.Start(new ProcessStartInfo
+                    if (currentSize == EXPECTED_DOWNLOAD_SIZE_B - 1)
                     {
-                        FileName = "steam://open/console",
-                        UseShellExecute = true
-                    });
+                        updateStatusCallback("Don't need to open console, files exist, proceeding to install.");
+                    }
+                    else
+                    {
+                        updateStatusCallback("Opening Steam console...");
+                        Process.Start(new ProcessStartInfo
+                        {
+                            // Dont open console if files exist!
+
+                            FileName = "steam://open/console",
+                            UseShellExecute = true
+                        });
+                        updateStatusCallback("Waiting for download to start...");
+                    }
+
 
                     // Monitor the download directory
-                    updateStatusCallback("Waiting for download to start...");
                     bool downloadStarted = false;
                     double lastReportedSize = 0;
-                    int noChangeCount = 0;
                     DateTime lastChangeTime = DateTime.Now;
-                    const double TOTAL_GB = 8.91;
 
                     while (true)
                     {
@@ -325,7 +334,6 @@ namespace THJPatcher.Helpers
                             }
 
                             // Calculate download size
-                            double currentSize = await Task.Run(() => CalculateDirectorySize(expectedPath));
                             double downloadedGB = Math.Round(currentSize / (1024.0 * 1024.0 * 1024.0), 2);
                             double progress = (downloadedGB / TOTAL_GB) * 100;
                             
@@ -334,20 +342,25 @@ namespace THJPatcher.Helpers
                             if (currentSize > lastReportedSize)
                             {
                                 lastChangeTime = DateTime.Now;
-                                noChangeCount = 0;
+                                lastReportedSize = currentSize;
+                            } 
+                            else if (currentSize < lastReportedSize)
+                            {
+                                updateStatusCallback("Download size went down, resetting size. If this happens more than once at the start there is likely a problem.");
+                                lastChangeTime = DateTime.Now;
                                 lastReportedSize = currentSize;
                             }
                             else
                             {
-                                noChangeCount++;
-                                var timeWithoutChange = DateTime.Now - lastChangeTime;
                                 
                                 // Only show pause message if no change for 30 seconds (6 iterations)
-                                if (noChangeCount >= 6 && downloadedGB < (TOTAL_GB * 0.95))
+                                if (DateTime.Now.AddSeconds(-30) > lastChangeTime)
                                 {
-                                    updateStatusCallback("Download paused, reconnecting...");
+                                    updateStatusCallback("Download paused, steam may have stopped downloading... If this error continues you may need to restart steam and rerun the installer.");
+                                    updateStatusCallback("Looking for total bytes of ");
+                                    lastChangeTime = DateTime.Now;
                                 }
-                                else if (noChangeCount >= 12)
+                                else if (currentSize >= EXPECTED_DOWNLOAD_SIZE_B-1)
                                 {
                                     updateStatusCallback("Download complete!");
                                     updateStatusCallback("Transferring files...");

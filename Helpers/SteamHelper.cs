@@ -366,7 +366,7 @@ namespace THJPatcher.Helpers
                                     updateStatusCallback("Download complete!");
                                     updateStatusCallback("Transferring files...");
                                     
-                                    await Task.Run(() => CopyDirectoryWithRetry(expectedPath, installPath, updateStatusCallback));
+                                    await Task.Run(() => CopyDirectory(expectedPath, installPath));
                                     updateStatusCallback("File transfer complete!");
 
                                     // Verify and copy required DLL files
@@ -489,64 +489,18 @@ namespace THJPatcher.Helpers
             return size;
         }
 
-        private static async Task CopyDirectoryWithRetry(string sourceDir, string destinationDir, Action<string> updateStatusCallback)
+        private static void CopyDirectory(string sourceDir, string destinationDir)
         {
-            // Create all of the directories with retry
+            // Create all of the directories
             foreach (string dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
             {
-                string targetDir = dirPath.Replace(sourceDir, destinationDir);
-                await RetryOperation(async () => 
-                {
-                    Directory.CreateDirectory(targetDir);
-                    await Task.CompletedTask; // Convert sync operation to async
-                }, 
-                $"Creating directory: {Path.GetFileName(targetDir)}", 
-                updateStatusCallback);
+                Directory.CreateDirectory(dirPath.Replace(sourceDir, destinationDir));
             }
 
-            // Copy all the files with retry
-            foreach (string sourcePath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
+            // Copy all the files & replaces any files with the same name
+            foreach (string newPath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
             {
-                string destPath = sourcePath.Replace(sourceDir, destinationDir);
-                string fileName = Path.GetFileName(sourcePath);
-                
-                await RetryOperation(async () =>
-                {
-                    // Try to release any existing handles
-                    if (File.Exists(destPath))
-                    {
-                        try
-                        {
-                            using (var fs = new FileStream(destPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
-                            {
-                                // If we can open it exclusively, we can close it and delete it
-                                fs.Close();
-                            }
-                            File.Delete(destPath);
-                        }
-                        catch (IOException)
-                        {
-                            // If we can't open it exclusively, try to force close any handles
-                            GC.Collect();
-                            GC.WaitForPendingFinalizers();
-                            File.Delete(destPath);
-                        }
-                    }
-
-                    // Wait a moment after deleting
-                    await Task.Delay(100);
-
-                    // Try to copy with more permissive sharing mode
-                    using (var sourceStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                    using (var destStream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.Read))
-                    {
-                        await sourceStream.CopyToAsync(destStream);
-                    }
-                }, 
-                $"Copying: {fileName}", 
-                updateStatusCallback,
-                maxRetries: 5,
-                retryDelay: 2000);
+                File.Copy(newPath, newPath.Replace(sourceDir, destinationDir), true);
             }
         }
 

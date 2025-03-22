@@ -22,7 +22,7 @@ namespace THJPatcher.Helpers
         private const string GAME_DEPOT_ID = "205711";
         private const string GAME_MANIFEST_ID = "1926608638440811669";
         private const double TOTAL_GB = 8.91;
-        private const double EXPECTED_DOWNLOAD_SIZE_B = 9410506056.0;
+        private const double EXPECTED_DOWNLOAD_SIZE_B = 9567578066.0;
 
         // Shortcut creation
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
@@ -298,12 +298,13 @@ namespace THJPatcher.Helpers
 
                     double currentSize = await Task.Run(() => CalculateDirectorySize(expectedPath));
                     // Open Steam console
-                    if (currentSize == EXPECTED_DOWNLOAD_SIZE_B - 1)
+                    if (currentSize == EXPECTED_DOWNLOAD_SIZE_B)
                     {
                         updateStatusCallback("Don't need to open console, files exist, proceeding to install.");
                     }
                     else
                     {
+                        updateStatusCallback(currentSize.ToString());
                         updateStatusCallback("Opening Steam console...");
                         Process.Start(new ProcessStartInfo
                         {

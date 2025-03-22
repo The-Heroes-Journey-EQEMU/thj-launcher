@@ -304,7 +304,6 @@ namespace THJPatcher.Helpers
                     }
                     else
                     {
-                        updateStatusCallback(currentSize.ToString());
                         updateStatusCallback("Opening Steam console...");
                         Process.Start(new ProcessStartInfo
                         {

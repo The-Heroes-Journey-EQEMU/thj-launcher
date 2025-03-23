@@ -21,8 +21,8 @@ namespace THJPatcher.Helpers
         private const string GAME_APP_ID = "205710";
         private const string GAME_DEPOT_ID = "205711";
         private const string GAME_MANIFEST_ID = "1926608638440811669";
-        private const double TOTAL_SIZE_MB = 8910.0;
-        private const double EXPECTED_DOWNLOAD_SIZE_MB = 8910.0;
+        private const double TOTAL_GB = 8.91;
+        private const double EXPECTED_DOWNLOAD_SIZE_B = 9567578066.0;
 
         // Shortcut creation
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
@@ -296,21 +296,30 @@ namespace THJPatcher.Helpers
                         }
                     }
 
+                    double currentSize = await Task.Run(() => CalculateDirectorySize(expectedPath));
                     // Open Steam console
-                    updateStatusCallback("Opening Steam console...");
-                    Process.Start(new ProcessStartInfo
+                    if (currentSize == EXPECTED_DOWNLOAD_SIZE_B)
                     {
-                        FileName = "steam://open/console",
-                        UseShellExecute = true
-                    });
+                        updateStatusCallback("Don't need to open console, files exist, proceeding to install.");
+                    }
+                    else
+                    {
+                        updateStatusCallback("Opening Steam console...");
+                        Process.Start(new ProcessStartInfo
+                        {
+                            // Dont open console if files exist!
+
+                            FileName = "steam://open/console",
+                            UseShellExecute = true
+                        });
+                        updateStatusCallback("Waiting for download to start...");
+                    }
+
 
                     // Monitor the download directory
-                    updateStatusCallback("Waiting for download to start...");
                     bool downloadStarted = false;
                     double lastReportedSize = 0;
-                    int noChangeCount = 0;
                     DateTime lastChangeTime = DateTime.Now;
-                    const double TOTAL_GB = 8.91;
 
                     while (true)
                     {
@@ -325,7 +334,6 @@ namespace THJPatcher.Helpers
                             }
 
                             // Calculate download size
-                            double currentSize = await Task.Run(() => CalculateDirectorySize(expectedPath));
                             double downloadedGB = Math.Round(currentSize / (1024.0 * 1024.0 * 1024.0), 2);
                             double progress = (downloadedGB / TOTAL_GB) * 100;
                             
@@ -334,25 +342,30 @@ namespace THJPatcher.Helpers
                             if (currentSize > lastReportedSize)
                             {
                                 lastChangeTime = DateTime.Now;
-                                noChangeCount = 0;
+                                lastReportedSize = currentSize;
+                            } 
+                            else if (currentSize < lastReportedSize)
+                            {
+                                updateStatusCallback("Download size went down, resetting size. If this happens more than once at the start there is likely a problem.");
+                                lastChangeTime = DateTime.Now;
                                 lastReportedSize = currentSize;
                             }
                             else
                             {
-                                noChangeCount++;
-                                var timeWithoutChange = DateTime.Now - lastChangeTime;
                                 
                                 // Only show pause message if no change for 30 seconds (6 iterations)
-                                if (noChangeCount >= 6 && downloadedGB < (TOTAL_GB * 0.95))
+                                if (DateTime.Now.AddSeconds(-30) > lastChangeTime)
                                 {
-                                    updateStatusCallback("Download paused, reconnecting...");
+                                    updateStatusCallback("Download paused, steam may have stopped downloading... If this error continues you may need to restart steam and rerun the installer.");
+                                    updateStatusCallback("Looking for total bytes of ");
+                                    lastChangeTime = DateTime.Now;
                                 }
-                                else if (noChangeCount >= 12)
+                                else if (currentSize >= EXPECTED_DOWNLOAD_SIZE_B-1)
                                 {
                                     updateStatusCallback("Download complete!");
                                     updateStatusCallback("Transferring files...");
                                     
-                                    await Task.Run(() => CopyDirectoryWithRetry(expectedPath, installPath, updateStatusCallback));
+                                    await Task.Run(() => CopyDirectory(expectedPath, installPath));
                                     updateStatusCallback("File transfer complete!");
 
                                     // Verify and copy required DLL files
@@ -475,64 +488,18 @@ namespace THJPatcher.Helpers
             return size;
         }
 
-        private static async Task CopyDirectoryWithRetry(string sourceDir, string destinationDir, Action<string> updateStatusCallback)
+        private static void CopyDirectory(string sourceDir, string destinationDir)
         {
-            // Create all of the directories with retry
+            // Create all of the directories
             foreach (string dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
             {
-                string targetDir = dirPath.Replace(sourceDir, destinationDir);
-                await RetryOperation(async () => 
-                {
-                    Directory.CreateDirectory(targetDir);
-                    await Task.CompletedTask; // Convert sync operation to async
-                }, 
-                $"Creating directory: {Path.GetFileName(targetDir)}", 
-                updateStatusCallback);
+                Directory.CreateDirectory(dirPath.Replace(sourceDir, destinationDir));
             }
 
-            // Copy all the files with retry
-            foreach (string sourcePath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
+            // Copy all the files & replaces any files with the same name
+            foreach (string newPath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
             {
-                string destPath = sourcePath.Replace(sourceDir, destinationDir);
-                string fileName = Path.GetFileName(sourcePath);
-                
-                await RetryOperation(async () =>
-                {
-                    // Try to release any existing handles
-                    if (File.Exists(destPath))
-                    {
-                        try
-                        {
-                            using (var fs = new FileStream(destPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
-                            {
-                                // If we can open it exclusively, we can close it and delete it
-                                fs.Close();
-                            }
-                            File.Delete(destPath);
-                        }
-                        catch (IOException)
-                        {
-                            // If we can't open it exclusively, try to force close any handles
-                            GC.Collect();
-                            GC.WaitForPendingFinalizers();
-                            File.Delete(destPath);
-                        }
-                    }
-
-                    // Wait a moment after deleting
-                    await Task.Delay(100);
-
-                    // Try to copy with more permissive sharing mode
-                    using (var sourceStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                    using (var destStream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.Read))
-                    {
-                        await sourceStream.CopyToAsync(destStream);
-                    }
-                }, 
-                $"Copying: {fileName}", 
-                updateStatusCallback,
-                maxRetries: 5,
-                retryDelay: 2000);
+                File.Copy(newPath, newPath.Replace(sourceDir, destinationDir), true);
             }
         }
 

@@ -296,15 +296,14 @@ namespace THJPatcher.Helpers
                         }
                     }
 
-                    double currentSize = await Task.Run(() => CalculateDirectorySize(expectedPath));
+                    double checkdir = await Task.Run(() => CalculateDirectorySize(expectedPath));
                     // Open Steam console
-                    if (currentSize == EXPECTED_DOWNLOAD_SIZE_B)
+                    if (checkdir == EXPECTED_DOWNLOAD_SIZE_B)
                     {
                         updateStatusCallback("Don't need to open console, files exist, proceeding to install.");
                     }
                     else
                     {
-                        updateStatusCallback(currentSize.ToString());
                         updateStatusCallback("Opening Steam console...");
                         Process.Start(new ProcessStartInfo
                         {
@@ -335,6 +334,7 @@ namespace THJPatcher.Helpers
                             }
 
                             // Calculate download size
+                            double currentSize = await Task.Run(() => CalculateDirectorySize(expectedPath));
                             double downloadedGB = Math.Round(currentSize / (1024.0 * 1024.0 * 1024.0), 2);
                             double progress = (downloadedGB / TOTAL_GB) * 100;
                             
@@ -358,7 +358,8 @@ namespace THJPatcher.Helpers
                                 if (DateTime.Now.AddSeconds(-30) > lastChangeTime)
                                 {
                                     updateStatusCallback("Download paused, steam may have stopped downloading... If this error continues you may need to restart steam and rerun the installer.");
-                                    updateStatusCallback("Looking for total bytes of ");
+                                    updateStatusCallback("Looking for total bytes of " + EXPECTED_DOWNLOAD_SIZE_B.ToString());
+                                    updateStatusCallback("Using install path of " + expectedPath);
                                     lastChangeTime = DateTime.Now;
                                 }
                                 else if (currentSize >= EXPECTED_DOWNLOAD_SIZE_B-1)

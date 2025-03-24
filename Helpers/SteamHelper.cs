@@ -161,6 +161,8 @@ namespace THJPatcher.Helpers
                     Directory.CreateDirectory(installPath);
 
                     // First message
+                    string builddate = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+                    updateStatusCallback("Using installer built on:" + builddate);
                     updateStatusCallback("Steam will launch automatically to begin the download.");
                     updateStatusCallback("\n");
 

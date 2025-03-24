@@ -54,7 +54,7 @@ jobs:
 
       - name: Create ZIP
         run: |
-          Compress-Archive -Path output\* -DestinationPath "THJInstaller-${{ env.VERSION }}.zip" -Force
+          Compress-Archive -Path output\* -DestinationPath "THJInstaller.zip" -Force
         shell: pwsh
 
       - name: Create Release
@@ -63,7 +63,7 @@ jobs:
         with:
           tag_name: v${{ env.VERSION }}
           name: Release v${{ env.VERSION }}
-          files: THJInstaller-${{ env.VERSION }}.zip
+          files: THJInstaller.zip
           draft: false
           prerelease: false
         env:

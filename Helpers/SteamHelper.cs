@@ -359,7 +359,7 @@ namespace THJPatcher.Helpers
                                 {
                                     updateStatusCallback("Download paused, steam may have stopped downloading... If this error continues you may need to restart steam and rerun the installer.");
                                     updateStatusCallback("Looking for total bytes of " + EXPECTED_DOWNLOAD_SIZE_B.ToString());
-                                    updateStatusCallback("Using install path of " + expectedPath);
+                                    updateStatusCallback("Using source path of " + expectedPath);
                                     lastChangeTime = DateTime.Now;
                                 }
                                 else if (currentSize >= EXPECTED_DOWNLOAD_SIZE_B-1)

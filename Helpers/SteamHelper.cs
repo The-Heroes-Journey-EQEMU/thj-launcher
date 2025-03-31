@@ -375,12 +375,12 @@ namespace THJPatcher.Helpers
 
                                     // Download and install the patcher
                                     updateStatusCallback("Installing the Heroes Journey Patcher...");
-                                    string patcherPath = Path.Combine(installPath, "heroesjourneyeq.exe");
+                                    string patcherPath = Path.Combine(installPath, "heroesjourneyemu.exe");
 
                                     try
                                     {
                                         using (var response = await httpClient.GetAsync(
-                                            "https://github.com/The-Heroes-Journey-EQEMU/eqemupatcher/releases/latest/download/heroesjourneyeq.exe",
+                                            "https://github.com/The-Heroes-Journey-EQEMU/thj-patcher/releases/latest/download/heroesjourneyemu.exe",
                                             HttpCompletionOption.ResponseHeadersRead))
                                         {
                                             response.EnsureSuccessStatusCode();

@@ -16,7 +16,7 @@
     <!-- Optimization settings -->
     <Optimize>true</Optimize>
     <TieredCompilation>true</TieredCompilation>
-z
+
     <!-- App metadata -->
     <AssemblyName>THJInstaller</AssemblyName>
     <Product>THJInstaller</Product>

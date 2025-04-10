@@ -45,7 +45,12 @@ jobs:
 
       - name: Build the Installer
         run: |
-          dotnet publish ${{ env.CSPROJ_PATH }} -c Release -r win-x64 --self-contained false -o output
+          dotnet publish ${{ env.CSPROJ_PATH }} -c Release -r win-x64 --self-contained true -o output
+
+      - name: Verify .exe File
+        run: |
+          if (-not (Test-Path -Path output\*.exe)) { throw "Executable file not found in output directory!" }
+        shell: pwsh
 
       - name: List output directory contents
         run: |
